@@ -85,6 +85,7 @@ un_sessions = pysqldf(
        sum(resolution_passed) as n_passed,
        max(n_members) as n_members,
        round(cast(sum(resolution_passed) as float) / cast(count(resolution_id) as float), 2) as percent_passed,
+       sum(important) as n_important,
        session_id
     from resolutions group by session_id
     """

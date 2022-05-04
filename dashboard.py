@@ -37,9 +37,8 @@ st.title("Case Study: United Nations Resolutions", )
 
 
 # load data
-# data_dir = "data/feature_data"
 data_dir = "data/feature_data"
-conflicts = pd.read_csv(f"{data_dir}/conflicts")
+conflicts_raw = pd.read_csv(f"{data_dir}/conflicts")
 resolutions = pd.read_csv(f"{data_dir}/resolutions")
 members = pd.read_csv(f"{data_dir}/members")
 resolution_parts = pd.read_csv(f"{data_dir}/resolution_parts")
@@ -50,7 +49,7 @@ members['joined_on'] = pd.to_datetime(members['joined_on'], format="%Y/%m/%d")
 resolutions['date'] = pd.to_datetime(resolutions['date'], format="%Y/%m/%d")
 
 # remove outliers
-conflicts = conflicts[conflicts['casualties'] < 14000000]
+conflicts = conflicts_raw[conflicts_raw['casualties'] < 14000000]
 
 # filter dfs
 conflicts = conflicts[conflicts['start'] >= start_year][conflicts['start'] <= end_year]
@@ -215,6 +214,27 @@ st.text("Interestingly, the last graph may indicate that there is little bias in
 st.text("because to maintain the same vote margin over time, new members had to be added in equal proportions")
 st.text("in terms of whether they support contested resolutions or not.")
 
+st.text("\n")
+# top 10 vote margins for passed votes
+st.text("Top 10 Highest Vote Margins for Passed Resolutions")
+top_10_vote_margins_passed_df = pysqldf(q="select vote_margin, short_desc, long_desc from resolutions where resolution_passed = 1 order by vote_margin desc limit 10")
+st.table(top_10_vote_margins_passed_df)
+
+# top 10 vote margins for not passed votes
+st.text("Top 10 Highest Vote Margins for Not Passed Resolutions")
+top_10_vote_margins_not_passed_df = pysqldf(q="select vote_margin, short_desc, long_desc from resolutions where resolution_passed = 0 order by vote_margin desc limit 10")
+st.table(top_10_vote_margins_not_passed_df)
+
+# top 10 lowest vote margins for passed votes
+st.text("Top 10 Lowest Vote Margins for Passed Resolutions")
+top_10_lowest_vote_margins_passed_df = pysqldf(q="select vote_margin, short_desc, long_desc from resolutions where resolution_passed = 1 order by vote_margin asc limit 10")
+st.table(top_10_lowest_vote_margins_passed_df)
+
+# top 10 lowest vote margins for not passed votes
+st.text("Top 10 Lowest Vote Margins for Not Passed Resolutions")
+top_10_lowest_vote_margins_not_passed_df = pysqldf(q="select vote_margin, short_desc, long_desc from resolutions where resolution_passed = 0 order by vote_margin asc limit 10")
+st.table(top_10_lowest_vote_margins_not_passed_df)
+
 
 st.text("\n")
 st.subheader("Exploring the Conflicts")
@@ -317,6 +337,96 @@ st.caption("Top 10 Longest Conflicts")
 # duration_intensity_heatmap = px.density_heatmap(conflicts, x="duration", y="casualties")
 # st.plotly_chart(duration_intensity_heatmap, use_container_width=True)
 
+st.subheader("UN Sessions & Conflicts - any connection?")
+
+# conflicts start year vs UN sessions
+conflict_start_count_df = pysqldf(
+    q="""
+    select count(conflict) as n_conflicts, start from conflicts group by start
+    """
+)
+conflict_sessions = make_subplots(specs=[[{"secondary_y": True}]])
+
+# Add traces
+conflict_sessions.add_trace(
+    go.Scatter(x=conflict_start_count_df['start'], y=conflict_start_count_df['n_conflicts'], name="N Conflicts"),
+    secondary_y=False,
+)
+conflict_sessions.add_trace(
+    go.Scatter(x=un_sessions['year'], y=un_sessions['n_resolutions'], name="N Resolutions"),
+    secondary_y=True,
+)
+
+conflict_sessions.add_trace(
+    go.Scatter(x=un_sessions['year'], y=un_sessions['n_passed'], name="N Resolutions Passed"),
+    secondary_y=True,
+)
+
+st.text("Conflicts Start Year vs UN Sessions")
+st.plotly_chart(conflict_sessions, use_container_width=True)
+
+# conflicts end year vs UN sessions
+conflict_end_count_df = pysqldf(
+    q="""
+    select count(conflict) as n_conflicts, end from conflicts group by end
+    """
+)
+conflict_end_sessions = make_subplots(specs=[[{"secondary_y": True}]])
+
+# Add traces
+conflict_end_sessions.add_trace(
+    go.Scatter(x=conflict_end_count_df['end'], y=conflict_end_count_df['n_conflicts'], name="N Conflicts"),
+    secondary_y=False,
+)
+conflict_end_sessions.add_trace(
+    go.Scatter(x=un_sessions['year'], y=un_sessions['n_resolutions'], name="N Resolutions"),
+    secondary_y=True,
+)
+
+conflict_end_sessions.add_trace(
+    go.Scatter(x=un_sessions['year'], y=un_sessions['n_passed'], name="N Resolutions Passed"),
+    secondary_y=True,
+)
+
+st.text("Conflicts End Year vs UN Sessions")
+st.plotly_chart(conflict_end_sessions, use_container_width=True)
+
+st.text("From the above, it can be seen that, for the period of time that the number of conflicts was increasing,")
+st.text("the number of UN resolutions tabled and passed was also increasing, possibly in response to the conflicts.")
+st.text("\n")
+st.text("Interestingly, it could be deduced that the increasing number of resolutions led to a decline in the")
+st.text("number of conflicts in the following years.")
+st.text("This may be a indication that the UN resolutions have been effective in reducing the number of conflicts.")
+
+
+# conflicts casualties vs UN sessions
+conflict_casualties_sum_df = pysqldf(
+    q="""
+    select avg(casualties) as total_casualties, start from conflicts group by start
+    """
+)
+conflict_casualties_sessions = make_subplots(specs=[[{"secondary_y": True}]])
+
+# Add traces
+conflict_casualties_sessions.add_trace(
+    go.Scatter(x=conflict_casualties_sum_df['start'], y=conflict_casualties_sum_df['total_casualties'], name="Av. Casualties"),
+    secondary_y=False,
+)
+conflict_casualties_sessions.add_trace(
+    go.Scatter(x=un_sessions['year'], y=un_sessions['n_resolutions'], name="N Resolutions"),
+    secondary_y=True,
+)
+
+conflict_casualties_sessions.add_trace(
+    go.Scatter(x=un_sessions['year'], y=un_sessions['n_passed'], name="N Resolutions Passed"),
+    secondary_y=True,
+)
+
+st.text("Average Casualties per Conflict vs UN Sessions")
+st.plotly_chart(conflict_casualties_sessions, use_container_width=True)
+
+
+st.text("\n")
 st.subheader("Correlation Plots")
 
 st.plotly_chart(px.imshow(conflicts.corr()), use_container_width=True)
@@ -327,3 +437,204 @@ st.caption("Resolutions")
 
 st.plotly_chart(px.imshow(resolutions.corr()), use_container_width=True)
 st.caption("UN Sessions")
+
+# case study questions
+
+st.header("Case Study Questions & Answers")
+
+# q1
+st.subheader("Q1. Which conflict resulted in the greatest number of casualties in the history of the UN?")
+st.metric(
+    label="Conflict with Highest Casualties",
+    value=conflicts_raw["casualties"].max()
+)
+
+# q2
+st.subheader("Q2. List the conflicts that are sitting in the top 5% by yearly casualties in the history of the UN.")
+# top 10 casualties conflicts
+n_conflicts = conflicts_raw['conflict'].count()
+top_5_p_casualties_df = pysqldf(
+    q=f"select conflict, casualties from conflicts_raw where start > (select min(year) from resolutions) order by intensity desc limit {int(n_conflicts*0.05)}"
+)
+st.table(top_5_p_casualties_df)
+
+# q3
+st.subheader("Q3. How would you estimate the proportion of historical conflicts that could be referred to as ‘civil war’?")
+st.text("Use key words in the conflict name to identify conflicts which are likely to be civil wars")
+st.text("The below sql query returns the following conflicts as possible civil wars")
+civil_wars_df = pysqldf(
+    q="""
+    select conflict 
+    from conflicts_raw
+    where upper(conflict) like '%GOVT%' 
+    or upper(conflict) like '%GVT%' 
+    or upper(conflict) like '%REBEL%'
+    or upper(conflict) like '%CIVIL%'
+    """
+)
+percent_civil_wars = civil_wars_df['conflict'].count() / conflicts_raw['conflict'].count()
+st.code(
+    body="""
+    select conflict 
+from conflicts 
+where upper(conflict) like '%GOVT%' 
+    or upper(conflict) like '%GVT%' 
+    or upper(conflict) like '%REBEL%'
+    or upper(conflict) like '%CIVIL%'
+    """,
+    language="sql"
+)
+
+with st.expander("Possible Civil Wars - Click to View"):
+    st.table(civil_wars_df)
+
+st.metric(
+    label="Percentage of Conflicts likely to be Civil Wars",
+    value=f"{round(percent_civil_wars*100, 2)} %"
+)
+
+# q4
+st.subheader("Q4. Which decade had the greatest number of resolutions proposed?")
+decade_resolutions_df = pysqldf(
+    q="""
+    select
+       cast(substr(cast(year as text), 0, 4) || '0' as integer) as decade, count(resolution_id) as n_resolutions
+from resolutions
+group by decade
+order by n_resolutions desc
+    """
+)
+st.metric(
+    label="Decade with Highest No. of Proposed Resolutions",
+    value=f"{decade_resolutions_df['decade'][decade_resolutions_df['n_resolutions'] == decade_resolutions_df['n_resolutions'].max()].item()}"
+)
+st.metric(
+    label="No. of Proposed Resolutions",
+    value=f"{decade_resolutions_df['n_resolutions'][decade_resolutions_df['n_resolutions'] == decade_resolutions_df['n_resolutions'].max()].item()}"
+)
+
+
+# q5 A
+st.subheader("Q5 A. How many sessions had all the discussed resolutions passed?")
+sessions_passed_df = pysqldf(
+    q = """
+    select *
+from un_sessions
+where n_resolutions = n_passed
+    """
+)
+st.metric(
+    label="No. of Sessions with All Resolutions Passed",
+    value=f"{sessions_passed_df['session_id'].count()}"
+)
+
+
+# q5 B
+st.subheader("Q5 B. Which of these had the greatest number of important issues discussed?")
+st.text("Both sessions had an equal number of important issues discussed")
+sessions_passed_highest_important = sessions_passed_df[sessions_passed_df['n_important'] == sessions_passed_df['n_important'].max()]
+st.table(sessions_passed_highest_important)
+
+# q6 A
+st.subheader("Q6 A. What has been the success rate of important issues compared to general issues?")
+n_issues_not_important = pysqldf(
+    q="""
+    select count(resolution_id) as count
+from resolutions
+where important = 0
+    """
+)['count'].max()
+
+n_issues_not_important_passed = pysqldf(
+    q="""
+    select count(resolution_id) as count
+from resolutions
+where important = 0
+and resolution_passed = 1
+    """
+)['count'].max()
+
+n_issues_important = pysqldf(
+    q="""
+    select count(resolution_id) as count
+from resolutions
+where important = 1
+    """
+)['count'].max()
+
+n_issues_important_passed = pysqldf(
+    q="""
+    select count(resolution_id) as count
+from resolutions
+where important = 1
+and resolution_passed = 1
+    """
+)['count'].max()
+
+n_issues = pysqldf(
+    q="""
+    select count(resolution_id) as count
+from resolutions
+    """
+)['count'].max()
+
+n_issues_passed = pysqldf(
+    q="""
+    select count(resolution_id) as count
+from resolutions
+where resolution_passed = 1
+    """
+)['count'].max()
+
+success_rate_not_important = n_issues_not_important_passed / n_issues_not_important
+success_rate_important = n_issues_important_passed / n_issues_important
+success_rate = n_issues_passed / n_issues
+
+s_rate_col1, s_rate_col2, s_rate_col3 = st.columns(3)
+
+with s_rate_col1:
+    st.metric(
+        label="Success Rate All Issues",
+        value=f"{round(success_rate * 100, 2)} %"
+    )
+
+with s_rate_col2:
+    st.metric(
+        label="Success Rate Not Important",
+        value=f"{round(success_rate_not_important * 100, 2)} %"
+    )
+
+with s_rate_col3:
+    st.metric(
+        label="Success Rate Important",
+        value=f"{round(success_rate_important * 100, 2)} %"
+    )
+
+# q6 B
+st.subheader("Q6 B. Based on your analysis of the data so far, what do you think could have driven this?")
+st.text(f"The committe has a very high success rate in general, with the total success rate being {round(success_rate * 100, 2)}%")
+
+# q7
+st.subheader("Q7. What is the longest time period in years for which no new member joined the United Nations since it was established?")
+
+# q8 A
+st.subheader("Q8 A. What is the annualised growth rate in membership for the UN since it was established?")
+un_sessions['member_growth_rate'] = un_sessions['n_members'].pct_change()
+st.table(un_sessions)
+
+# q8 B
+st.subheader("Q8 B. What were the top 3 years with highest growth in membership?")
+gg = pysqldf(
+    q = """
+   select year, member_growth_rate from un_sessions order by member_growth_rate desc limit 3
+    """
+)
+st.table(gg)
+
+# q9 A
+st.subheader("Q9 A. Using this data, what attributes would you create to predict the likelihood of a successful resolution?")
+st.plotly_chart(px.imshow(resolutions.corr()), use_container_width=True)
+st.caption("Resolutions Corr Plot")
+
+# q9 B
+st.subheader("Q9 B. What additional information would you request from the UN?")
