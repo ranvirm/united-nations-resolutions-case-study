@@ -37,7 +37,7 @@ st.title("Case Study: United Nations Resolutions", )
 
 
 # load data
-data_dir = "../data/feature_data"
+data_dir = "feature_data"
 conflicts = pd.read_csv(f"{data_dir}/conflicts")
 resolutions = pd.read_csv(f"{data_dir}/resolutions")
 members = pd.read_csv(f"{data_dir}/members")
