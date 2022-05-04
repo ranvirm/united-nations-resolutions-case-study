@@ -37,8 +37,8 @@ st.title("Case Study: United Nations Resolutions", )
 
 
 # load data
+# data_dir = "data/feature_data"
 data_dir = "data/feature_data"
-# data_dir = "../data/feature_data"
 conflicts = pd.read_csv(f"{data_dir}/conflicts")
 resolutions = pd.read_csv(f"{data_dir}/resolutions")
 members = pd.read_csv(f"{data_dir}/members")
@@ -243,30 +243,35 @@ intensity_duration = px.bar(intensity_duration_df, x='duration', y='av_intensity
 st.plotly_chart(intensity_duration, use_container_width=True)
 st.caption("Conflict Avg. Intensity by Duration")
 
-# conflict start year vs intensity
-intensity_start_df = pysqldf(q="select avg(intensity) as av_intensity, start from conflicts where casualties < 14000000 group by start")
-intensity_start = make_subplots(specs=[[{"secondary_y": False}]])
+st.text("The key takeaway from the above 2 figures is that shorter conflicts tend to be more intense,")
+st.text("that is, short conflicts have a higher number of casualties per year.")
+st.text("This may be a result of most conflicts being very intense at the start but the data is lacking to prove this.")
+st.text("This does tell us that the UN needs act decisively and quickly with ending conflicts.")
 
-# Add traces
-intensity_start.add_trace(
-    go.Scatter(x=intensity_start_df['start'], y=intensity_start_df['av_intensity']),
-    secondary_y=False,
-)
-
-st.plotly_chart(intensity_start, use_container_width=True)
-st.caption("Conflict Intensity by Start Year")
-
-# conflict start year vs casualties
-casualties_start_df = pysqldf(q="select avg(casualties) as av_casualties, start from conflicts where casualties < 14000000 group by start")
-casualties_start = make_subplots(specs=[[{"secondary_y": False}]])
-
-# Add traces
-casualties_start.add_trace(
-    go.Scatter(x=casualties_start_df['start'], y=casualties_start_df['av_casualties']),
-    secondary_y=False,
-)
-
-st.plotly_chart(casualties_start, use_container_width=True)
+# # conflict start year vs intensity
+# intensity_start_df = pysqldf(q="select avg(intensity) as av_intensity, start from conflicts where casualties < 14000000 group by start")
+# intensity_start = make_subplots(specs=[[{"secondary_y": False}]])
+#
+# # Add traces
+# intensity_start.add_trace(
+#     go.Scatter(x=intensity_start_df['start'], y=intensity_start_df['av_intensity']),
+#     secondary_y=False,
+# )
+#
+# st.plotly_chart(intensity_start, use_container_width=True)
+# st.caption("Conflict Intensity by Start Year")
+#
+# # conflict start year vs casualties
+# casualties_start_df = pysqldf(q="select avg(casualties) as av_casualties, start from conflicts where casualties < 14000000 group by start")
+# casualties_start = make_subplots(specs=[[{"secondary_y": False}]])
+#
+# # Add traces
+# casualties_start.add_trace(
+#     go.Scatter(x=casualties_start_df['start'], y=casualties_start_df['av_casualties']),
+#     secondary_y=False,
+# )
+#
+# st.plotly_chart(casualties_start, use_container_width=True)
 
 # top 10 intense conflicts
 top_10_intensity_df = pysqldf(q="select conflict, intensity from conflicts where casualties < 14000000 order by intensity desc limit 10")
@@ -279,6 +284,7 @@ top_10_intensity.add_trace(
 )
 
 st.plotly_chart(top_10_intensity, use_container_width=True)
+st.caption("Top 10 Intense Conflicts - measured by casualties per year")
 
 # top 10 casualties conflicts
 top_10_casualties_df = pysqldf(q="select conflict, casualties from conflicts where casualties < 14000000 order by casualties desc limit 10")
@@ -291,6 +297,7 @@ top_10_casualties.add_trace(
 )
 
 st.plotly_chart(top_10_casualties, use_container_width=True)
+st.caption("Top 10 Conflicts by Casualties")
 
 # top 10 duration conflicts
 top_10_duration_df = pysqldf(q="select conflict, duration from conflicts where casualties < 14000000 order by duration desc limit 10")
@@ -303,11 +310,20 @@ top_10_duration.add_trace(
 )
 
 st.plotly_chart(top_10_duration, use_container_width=True)
+st.caption("Top 10 Longest Conflicts")
 
 # conflict duration intensity heatmap
 
-duration_intensity_heatmap = px.density_heatmap(conflicts, x="duration", y="casualties")
-st.plotly_chart(duration_intensity_heatmap, use_container_width=True)
+# duration_intensity_heatmap = px.density_heatmap(conflicts, x="duration", y="casualties")
+# st.plotly_chart(duration_intensity_heatmap, use_container_width=True)
 
-x= px.imshow(conflicts.corr())
-st.plotly_chart(x, use_container_width=True)
+st.subheader("Correlation Plots")
+
+st.plotly_chart(px.imshow(conflicts.corr()), use_container_width=True)
+st.caption("Conflicts")
+
+st.plotly_chart(px.imshow(resolutions.corr()), use_container_width=True)
+st.caption("Resolutions")
+
+st.plotly_chart(px.imshow(resolutions.corr()), use_container_width=True)
+st.caption("UN Sessions")
